@@ -17,7 +17,7 @@ function RouteComponent() {
   const fetchData = async () => {
     setLoading(true);
     setError(null);
-    abortControllerRef.current = new AbortController(); // create a new AbortController for each fetch
+    abortControllerRef.current = new AbortController(); 
 
     try {
       const result = await axios.get(`${API}?query=react`, {
