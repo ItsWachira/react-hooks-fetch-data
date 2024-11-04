@@ -1,59 +1,68 @@
-import * as React from 'react';
-import { createLazyFileRoute } from '@tanstack/react-router';
-import axios from 'axios';
+import * as React from 'react'
+import { createLazyFileRoute } from '@tanstack/react-router'
+import axios from 'axios'
 
-const API = 'https://hn.algolia.com/api/v1/search';
+const API = 'https://hn.algolia.com/api/v1/search'
+
+const useQuery = <T,>(queryFn: () => Promise<T>, queryKey: any[]) => {
+  const [data, setData] = React.useState<T | null>(null)
+  const [isLoading, setIsLoading] = React.useState(false)
+  const [isError, setIsError] = React.useState(false)
+
+  React.useEffect(() => {
+    let didCancel = false
+
+    const fetchData = async () => {
+      setIsError(false)
+      setIsLoading(true)
+
+      try {
+        const result = await queryFn()
+        if (!didCancel) setData(result)
+      } catch (error) {
+        if (!didCancel) setIsError(true)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchData()
+
+    return () => {
+      didCancel = true
+    }
+  }, [...queryKey])
+
+  return { data, isLoading, isError }
+}
 
 export const Route = createLazyFileRoute('/_protected/fetch-data/with-abort')({
   component: RouteComponent,
-});
+})
 
 function RouteComponent() {
-  const [data, setData] = React.useState([]);
-  const [loading, setLoading] = React.useState(false);
-  const [error, setError] = React.useState<Error | null>(null);
-  const abortControllerRef = React.useRef(new AbortController());
-
-  const fetchData = async () => {
-    setLoading(true);
-    setError(null);
-    abortControllerRef.current = new AbortController(); 
-
-    try {
-      const result = await axios.get(`${API}?query=react`, {
-        signal: abortControllerRef.current.signal,
-      });
-      setData(result.data.hits);
-    } catch (err) {
-      if (axios.isCancel(err)) {
-        console.log('Request canceled', err.message);
-      } else {
-        setError(err instanceof Error ? err : new Error('An unknown error occurred'));
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const abortFetch = () => {
-    abortControllerRef.current.abort(); 
-    console.log('Fetch aborted');
-  };
+  const { data, isLoading, isError } = useQuery<Array<{ objectID: string; url: string; title: string }>>(
+    async () => {
+      const result = await axios.get(`${API}?query=react`)
+      return result.data.hits
+    },
+    ['search']
+  )
 
   return (
     <div>
-      <h3>Fetch Data with Abort Example</h3>
-      <button onClick={fetchData}>Fetch Data</button>
-      <button onClick={abortFetch}>Abort Fetch</button>
-      {loading && <p>Loading...</p>}
-      {error && <p style={{ color: 'red' }}>Error: {error.message}</p>}
+      <h3>Fetch Data with abort Example</h3>
+      {isLoading && <p>Loading...</p>}
+      {isError && <p style={{ color: 'red' }}>Error occurred while fetching data</p>}
       <ul>
-        {data.map((item: { objectID: string; url: string; title: string }) => (
+        {data?.map((item: { objectID: string; url: string; title: string }) => (
           <li key={item.objectID}>
-            <a href={item.url}>{item.title}</a>
+            <a href={item.url} target="_blank" rel="noopener noreferrer">
+              {item.title}
+            </a>
           </li>
         ))}
       </ul>
     </div>
-  );
+  )
 }
