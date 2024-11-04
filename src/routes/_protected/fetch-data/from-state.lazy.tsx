@@ -10,20 +10,18 @@ export const Route = createLazyFileRoute('/_protected/fetch-data/from-state')({
 
 function RouteComponent() {
   const [data, setData] = React.useState([])
-  const [loading, setLoading] = React.useState(true)
+  
 
   React.useEffect(() => {
     const fetchData = async () => {
       const result = await axios(`${API}?query=react`)
       setData(result.data.hits)
-      setLoading(false)
+  
     }
 
     fetchData()
   }, [])
  
-
-  if (loading) return <div>Loading...</div>
 
   return (
     <ul>
